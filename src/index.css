@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@source "./src/**/*.{html,js,jsx,ts,tsx}";
+
+@theme {
+    --color-background: #002b36;
+    /* Using a slightly richer dark background or keeping user's choice */
+    /* Wait, I should respect the user's existing background if possible, but they want 'visuals'. I'll stick to a balanced dark theme compatible with Shadcn */
+    --color-background: #000b1e;
+    --color-foreground: #ffffff;
+
+    --color-primary: #6C3FF5;
+    --color-primary-foreground: #ffffff;
+
+    --color-secondary: #1e293b;
+    --color-secondary-foreground: #ffffff;
+
+    --color-muted: #1e293b;
+    --color-muted-foreground: #94a3b8;
+
+    --color-accent: #1e293b;
+    --color-accent-foreground: #ffffff;
+
+    --color-destructive: #ef4444;
+    --color-destructive-foreground: #ffffff;
+
+    --color-border: #1e293b;
+    --color-input: #1e293b;
+    --color-ring: #6C3FF5;
+
+    --radius-lg: 0.5rem;
+    --radius-md: 0.375rem;
+    --radius-sm: 0.25rem;
+}
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
