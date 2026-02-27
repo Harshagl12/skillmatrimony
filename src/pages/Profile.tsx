@@ -178,8 +178,8 @@ const Profile = () => {
 
   // Theme-aware style helpers
   const cardBg = isDark
-    ? 'bg-zinc-900 border-white/5'
-    : 'bg-white/60 backdrop-blur-xl border-violet-200/30 shadow-sm';
+    ? 'bg-[#0f1115] border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]'
+    : 'bg-white/40 backdrop-blur-xl border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]';
   const inputStyle = isDark
     ? 'bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus:border-violet-500/50'
     : 'bg-white/70 border-violet-200/40 text-gray-900 placeholder:text-gray-400 focus:border-violet-500';
@@ -189,7 +189,7 @@ const Profile = () => {
   const accentColor = isDark ? 'text-violet-500' : 'text-violet-600';
 
   return (
-    <div className="p-8 max-w-5xl mx-auto min-h-screen pb-20">
+    <div className="max-w-[1400px] mx-auto min-h-screen pb-20">
       <header className="mb-10">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
@@ -217,14 +217,14 @@ const Profile = () => {
           <Loader2 className={`animate-spin ${accentColor}`} size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
           {/* Left Column: Avatar & Quick Stats */}
-          <div className="md:col-span-4 space-y-6">
+          <div className="md:col-span-4 space-y-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className={`${cardBg} border rounded-3xl p-8 text-center flex flex-col items-center transition-colors`}
+              className={`${cardBg} border rounded-[2rem] p-8 text-center flex flex-col items-center transition-all`}
             >
               <div className="relative mb-6 group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
                 <input
@@ -279,7 +279,7 @@ const Profile = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className={`${cardBg} border rounded-3xl p-6 transition-colors`}
+              className={`${cardBg} border rounded-[2rem] p-8 transition-colors`}
             >
               <h4 className={`font-bold mb-4 flex items-center gap-2 ${headingColor}`}>
                 <FileText size={18} className={accentColor} /> Bio
@@ -288,7 +288,7 @@ const Profile = () => {
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 placeholder="Tell us a bit about yourself..."
-                className={`w-full border rounded-xl p-4 text-sm focus:outline-none resize-none h-32 transition-colors ${inputStyle}`}
+                className={`w-full border rounded-2xl p-4 text-sm focus:outline-none resize-none h-32 transition-colors ${inputStyle}`}
               />
             </motion.div>
 
@@ -297,7 +297,7 @@ const Profile = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className={`${cardBg} border rounded-3xl p-6 transition-colors`}
+              className={`${cardBg} border rounded-[2rem] p-8 transition-colors`}
             >
               <h4 className={`font-bold mb-4 flex items-center gap-2 ${headingColor}`}>
                 {isDark
@@ -306,7 +306,7 @@ const Profile = () => {
                 }
                 Appearance
               </h4>
-              <div className={`flex items-center justify-between p-4 rounded-xl transition-colors ${isDark ? 'bg-black/20 border border-white/10' : 'bg-gray-50 border border-gray-200'
+              <div className={`flex items-center justify-between p-4 rounded-xl transition-colors ${isDark ? 'bg-black/20 border border-white/10' : 'bg-white/40 border border-violet-100'
                 }`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2.5 rounded-xl transition-all ${isDark ? 'bg-violet-500/10' : 'bg-amber-50'
@@ -353,12 +353,12 @@ const Profile = () => {
           </div>
 
           {/* Right Column: Form Fields */}
-          <div className="md:col-span-8 space-y-6">
+          <div className="md:col-span-8 space-y-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className={`${cardBg} border rounded-3xl p-8 transition-colors`}
+              className={`${cardBg} border rounded-[2rem] p-8 md:p-10 transition-colors`}
             >
               <h3 className={`text-xl font-bold mb-6 ${headingColor}`}>Academic Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -368,7 +368,7 @@ const Profile = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -377,7 +377,7 @@ const Profile = () => {
                     type="email"
                     disabled
                     value={formData.email}
-                    className={`w-full border rounded-xl px-4 py-3 cursor-not-allowed ${isDark ? 'bg-black/40 border-white/5 text-zinc-500' : 'bg-gray-100 border-gray-200 text-gray-400'
+                    className={`w-full border rounded-2xl px-4 py-3 cursor-not-allowed ${isDark ? 'bg-black/40 border-white/5 text-zinc-500' : 'bg-gray-100 border-gray-200 text-gray-400'
                       }`}
                   />
                 </div>
@@ -387,7 +387,7 @@ const Profile = () => {
                   <input
                     value={formData.college}
                     onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -397,7 +397,7 @@ const Profile = () => {
                     value={formData.university}
                     onChange={(e) => setFormData({ ...formData, university: e.target.value })}
                     placeholder="e.g. VTU"
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
                   />
                 </div>
 
@@ -406,7 +406,7 @@ const Profile = () => {
                   <select
                     value={formData.branch}
                     onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors appearance-none ${inputStyle}`}
                   >
                     <option>Computer Science</option>
                     <option>Information Science</option>
@@ -422,7 +422,7 @@ const Profile = () => {
                   <select
                     value={formData.semester}
                     onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors appearance-none ${inputStyle}`}
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
                       <option key={sem} value={`${sem}${sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester`}>
@@ -438,7 +438,7 @@ const Profile = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className={`${cardBg} border rounded-3xl p-8 transition-colors`}
+              className={`${cardBg} border rounded-[2rem] p-8 transition-colors`}
             >
               <h3 className={`text-xl font-bold mb-6 ${headingColor}`}>Skills & Socials</h3>
 
@@ -451,11 +451,11 @@ const Profile = () => {
                     onChange={(e) => setNewSkill(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addSkill()}
                     placeholder="Add a skill (e.g. React, Python)"
-                    className={`flex-1 border rounded-xl px-4 py-2 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`flex-1 border rounded-2xl px-4 py-2 focus:outline-none transition-colors ${inputStyle}`}
                   />
                   <button
                     onClick={addSkill}
-                    className={`p-2 rounded-xl transition-colors ${isDark
+                    className={`p-3 rounded-2xl transition-colors ${isDark
                       ? 'bg-violet-600/20 text-violet-400 hover:bg-violet-600 hover:text-white'
                       : 'bg-violet-600/10 text-violet-600 hover:bg-violet-600 hover:text-white'
                       }`}
@@ -492,7 +492,7 @@ const Profile = () => {
                     value={formData.linkedin}
                     onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
                     placeholder="https://linkedin.com/in/username"
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -504,7 +504,7 @@ const Profile = () => {
                     value={formData.github}
                     onChange={(e) => setFormData({ ...formData, github: e.target.value })}
                     placeholder="https://github.com/username"
-                    className={`w-full border rounded-xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
+                    className={`w-full border rounded-2xl px-4 py-3 focus:outline-none transition-colors ${inputStyle}`}
                   />
                 </div>
               </div>
@@ -521,7 +521,7 @@ const Profile = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSave}
                 disabled={saving}
-                className={`px-8 py-3 font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg ${saved
+                className={`px-8 py-3.5 font-bold rounded-2xl transition-all flex items-center gap-2 shadow-lg ${saved
                   ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 text-white'
                   : isDark
                     ? 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/20 text-white'
