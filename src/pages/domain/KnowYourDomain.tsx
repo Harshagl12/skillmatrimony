@@ -4,7 +4,7 @@
 // Dual-Axis Career Mapping System
 // APIs: Optional Gemini for AI advice
 // =============================================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Settings,
@@ -21,8 +21,12 @@ import {
     BookOpen,
     Loader2,
     RotateCcw,
+    Play,
+    ChevronDown,
+    ExternalLink,
+    Check,
 } from 'lucide-react';
-import { fetchGeminiInsight } from '../../lib/api';
+import { fetchGeminiInsight, fetchYouTubeVideos, type YouTubeVideo } from '../../lib/api';
 import { trackEvent } from '../../lib/analytics';
 
 // =============================================
@@ -39,6 +43,7 @@ interface ProblemType {
     skills: string[];
     roles: string[];
     roadmap: string[];
+    roadmapVideos: string[];  // YouTube search queries per step
 }
 
 const PROBLEM_TYPES: ProblemType[] = [
@@ -60,6 +65,14 @@ const PROBLEM_TYPES: ProblemType[] = [
             'Practice system design (Grokking System Design)',
             'Contribute to open-source infrastructure projects',
         ],
+        roadmapVideos: [
+            'Go programming language full course beginners',
+            'Linux command line tutorial beginners',
+            'Build REST API Go from scratch',
+            'Docker and Kubernetes full course',
+            'System design interview concepts',
+            'How to contribute to open source projects',
+        ],
     },
     {
         id: 'design',
@@ -78,6 +91,14 @@ const PROBLEM_TYPES: ProblemType[] = [
             'Learn Figma and create a design system',
             'Build a portfolio website',
             'Learn accessibility (WCAG) standards',
+        ],
+        roadmapVideos: [
+            'HTML CSS JavaScript full course beginners 2024',
+            'React JS full course project tutorial',
+            'UI UX design principles beginners',
+            'Figma tutorial design system from scratch',
+            'Build portfolio website React tutorial',
+            'Web accessibility WCAG tutorial developers',
         ],
     },
     {
@@ -98,6 +119,14 @@ const PROBLEM_TYPES: ProblemType[] = [
             'Learn SQL and data engineering basics',
             'Participate in Kaggle competitions',
         ],
+        roadmapVideos: [
+            'Python for data science full course',
+            'Pandas NumPy matplotlib tutorial',
+            'Machine learning Andrew Ng course overview',
+            'Machine learning project tutorial Python',
+            'SQL for data engineering tutorial',
+            'Kaggle competition walkthrough beginners',
+        ],
     },
     {
         id: 'hardware',
@@ -117,6 +146,14 @@ const PROBLEM_TYPES: ProblemType[] = [
             'Build an IoT project (sensor → cloud → dashboard)',
             'Learn basic electronics and PCB design',
         ],
+        roadmapVideos: [
+            'C++ embedded programming tutorial',
+            'Arduino projects for beginners tutorial',
+            'Raspberry Pi beginner tutorial',
+            'ROS robot operating system tutorial',
+            'IoT project sensor to cloud tutorial',
+            'Electronics PCB design beginners',
+        ],
     },
 ];
 
@@ -135,6 +172,48 @@ const KnowYourDomain = () => {
     const [interestLevels, setInterestLevels] = useState<InterestLevel[]>([]);
     const [geminiAdvice, setGeminiAdvice] = useState('');
     const [loadingAdvice, setLoadingAdvice] = useState(false);
+    const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
+    const [expandedStep, setExpandedStep] = useState<number | null>(null);
+    const [stepVideos, setStepVideos] = useState<Record<number, YouTubeVideo | null>>({});
+    const [loadingVideo, setLoadingVideo] = useState<number | null>(null);
+
+    // Load completed steps from localStorage
+    useEffect(() => {
+        if (selectedType) {
+            const saved = localStorage.getItem(`roadmap_${selectedType.id}`);
+            if (saved) setCompletedSteps(JSON.parse(saved));
+        }
+    }, [selectedType]);
+
+    const toggleStepComplete = (stepIdx: number) => {
+        if (!selectedType) return;
+        const key = `step_${stepIdx}`;
+        const updated = { ...completedSteps, [key]: !completedSteps[key] };
+        setCompletedSteps(updated);
+        localStorage.setItem(`roadmap_${selectedType.id}`, JSON.stringify(updated));
+        trackEvent('roadmap_step_toggle', { type: selectedType.id, step: stepIdx, completed: !completedSteps[key] });
+    };
+
+    const handleExpandStep = async (stepIdx: number) => {
+        if (expandedStep === stepIdx) {
+            setExpandedStep(null);
+            return;
+        }
+        setExpandedStep(stepIdx);
+
+        // Fetch video if not already cached
+        if (!stepVideos[stepIdx] && selectedType) {
+            setLoadingVideo(stepIdx);
+            const query = selectedType.roadmapVideos[stepIdx];
+            const videos = await fetchYouTubeVideos(query, 1);
+            setStepVideos(prev => ({ ...prev, [stepIdx]: videos[0] || null }));
+            setLoadingVideo(null);
+        }
+    };
+
+    const completedCount = selectedType ? selectedType.roadmap.filter((_, i) => completedSteps[`step_${i}`]).length : 0;
+    const totalSteps = selectedType ? selectedType.roadmap.length : 0;
+    const progressPercent = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
     const handleTypeSelect = (type: ProblemType) => {
         setSelectedType(type);
@@ -281,8 +360,8 @@ const KnowYourDomain = () => {
                                                     key={v}
                                                     onClick={() => updateLevel(idx, 'skill', v)}
                                                     className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${v <= level.skill
-                                                            ? 'bg-violet-500 text-white shadow-md shadow-violet-500/20'
-                                                            : 'bg-white/5 text-zinc-600 hover:bg-white/10'
+                                                        ? 'bg-violet-500 text-white shadow-md shadow-violet-500/20'
+                                                        : 'bg-white/5 text-zinc-600 hover:bg-white/10'
                                                         }`}
                                                 >
                                                     {v}
@@ -304,8 +383,8 @@ const KnowYourDomain = () => {
                                                     key={v}
                                                     onClick={() => updateLevel(idx, 'interest', v)}
                                                     className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${v <= level.interest
-                                                            ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                                                            : 'bg-white/5 text-zinc-600 hover:bg-white/10'
+                                                        ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                                                        : 'bg-white/5 text-zinc-600 hover:bg-white/10'
                                                         }`}
                                                 >
                                                     {v}
@@ -418,32 +497,146 @@ const KnowYourDomain = () => {
                             )}
                         </div>
 
-                        {/* Roadmap */}
+                        {/* Roadmap with YouTube Videos */}
                         <div className="p-6 rounded-3xl bg-zinc-900/80 border border-white/5">
-                            <h4 className="text-white font-bold mb-5 flex items-center gap-2">
-                                <BookOpen size={16} className="text-emerald-500" />
-                                Your Learning Roadmap
-                            </h4>
-                            <div className="space-y-4">
-                                {selectedType.roadmap.map((step, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: 0.5 + i * 0.1 }}
-                                        className="flex gap-4 items-start"
-                                    >
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 text-xs font-bold shrink-0">
-                                                {i + 1}
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-white font-bold flex items-center gap-2">
+                                    <BookOpen size={16} className="text-emerald-500" />
+                                    Your Learning Roadmap
+                                </h4>
+                                <span className="text-xs text-zinc-500">{completedCount}/{totalSteps} completed</span>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="w-full h-2 bg-white/5 rounded-full mb-6 overflow-hidden">
+                                <motion.div
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progressPercent}%` }}
+                                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                                />
+                            </div>
+
+                            <div className="space-y-3">
+                                {selectedType.roadmap.map((step, i) => {
+                                    const isCompleted = completedSteps[`step_${i}`];
+                                    const isExpanded = expandedStep === i;
+                                    const video = stepVideos[i];
+                                    const isLoading = loadingVideo === i;
+
+                                    return (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.5 + i * 0.1 }}
+                                            className={`rounded-2xl border transition-all duration-300 ${isCompleted
+                                                    ? 'bg-emerald-500/5 border-emerald-500/20'
+                                                    : isExpanded
+                                                        ? 'bg-violet-500/5 border-violet-500/20'
+                                                        : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                                                }`}
+                                        >
+                                            {/* Step Header */}
+                                            <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => handleExpandStep(i)}>
+                                                {/* Checkbox */}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); toggleStepComplete(i); }}
+                                                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${isCompleted
+                                                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                                                            : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20'
+                                                        }`}
+                                                >
+                                                    {isCompleted ? <Check size={14} strokeWidth={3} /> : <span className="text-xs font-bold">{i + 1}</span>}
+                                                </button>
+
+                                                {/* Step Text */}
+                                                <p className={`flex-1 text-sm transition-all ${isCompleted ? 'text-emerald-400 line-through opacity-70' : 'text-zinc-300'
+                                                    }`}>{step}</p>
+
+                                                {/* Watch / Expand Button */}
+                                                <div className="flex items-center gap-2">
+                                                    {!isExpanded && (
+                                                        <span className="text-[10px] text-zinc-500 hidden sm:block">Watch video</span>
+                                                    )}
+                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-violet-500/20 text-violet-400 rotate-180' : 'bg-white/5 text-zinc-500 hover:text-white'
+                                                        }`}>
+                                                        <ChevronDown size={14} />
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {i < selectedType.roadmap.length - 1 && (
-                                                <div className="w-px h-6 bg-white/5 mt-1" />
-                                            )}
-                                        </div>
-                                        <p className="text-zinc-300 text-sm pt-1.5">{step}</p>
-                                    </motion.div>
-                                ))}
+
+                                            {/* Expanded Video Section */}
+                                            <AnimatePresence>
+                                                {isExpanded && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <div className="px-4 pb-4">
+                                                            {isLoading ? (
+                                                                <div className="flex items-center justify-center py-12 bg-black/20 rounded-xl">
+                                                                    <Loader2 className="animate-spin text-violet-500 mr-2" size={20} />
+                                                                    <span className="text-zinc-400 text-sm">Finding the best tutorial...</span>
+                                                                </div>
+                                                            ) : video ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5">
+                                                                        <iframe
+                                                                            src={`${video.embedUrl}?autoplay=1&rel=0`}
+                                                                            title={video.title}
+                                                                            className="w-full h-full"
+                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                            allowFullScreen
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <p className="text-zinc-400 text-xs leading-relaxed line-clamp-2 flex-1">{video.title}</p>
+                                                                        <a
+                                                                            href={`https://www.youtube.com/watch?v=${video.embedUrl.split('/').pop()}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="shrink-0 flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300 transition-colors"
+                                                                        >
+                                                                            <ExternalLink size={10} />
+                                                                            YouTube
+                                                                        </a>
+                                                                    </div>
+                                                                    {!isCompleted && (
+                                                                        <button
+                                                                            onClick={() => toggleStepComplete(i)}
+                                                                            className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                                                        >
+                                                                            <Check size={12} />
+                                                                            Mark as Completed
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col items-center justify-center py-10 bg-black/20 rounded-xl gap-2">
+                                                                    <Play size={24} className="text-zinc-600" />
+                                                                    <p className="text-zinc-500 text-xs">No video found. Try searching on YouTube.</p>
+                                                                    <a
+                                                                        href={`https://www.youtube.com/results?search_query=${encodeURIComponent(selectedType.roadmapVideos[i])}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-violet-400 text-xs hover:underline flex items-center gap-1 mt-1"
+                                                                    >
+                                                                        <ExternalLink size={10} />
+                                                                        Search on YouTube
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         </div>
 

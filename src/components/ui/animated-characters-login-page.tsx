@@ -362,13 +362,14 @@ function LoginPage() {
                     const { error: profileError } = await supabase
                         .from('profiles')
                         .upsert({
+                            id: authData.user.id,
                             user_id: authData.user.id,
                             name: fullName,
                             email: email,
                             role: role,
                             is_approved: role === 'student',
                             created_at: new Date().toISOString(),
-                        });
+                        }, { onConflict: 'user_id' });
 
                     if (profileError) {
                         console.error("Profile creation error:", profileError);

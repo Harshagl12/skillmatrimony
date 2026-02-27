@@ -24,6 +24,8 @@ import {
 import { trackEvent } from '../lib/analytics';
 import { parseDocument } from '../utils/documentParser';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 
 
 // --- Components ---
@@ -66,6 +68,8 @@ const ScoreCircle = ({ score }: { score: number }) => {
 // --- Main Page ---
 
 const ZeroFailureZone = () => {
+  const { user } = useAuth();
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'checker' | 'exam'>('checker');
 
   // Checker State
@@ -109,9 +113,9 @@ const ZeroFailureZone = () => {
       } else {
         setCheckerError("Failed to analyze document. Please try again or use a different file.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Analysis failed", err);
-      setCheckerError("An error occurred during analysis. Please try again.");
+      setCheckerError(err.message || "An error occurred during analysis. Please try again.");
     } finally {
       setAnalyzing(false);
     }
@@ -164,7 +168,7 @@ const ZeroFailureZone = () => {
       }
     } catch (err: any) {
       console.error("Exam generation failed", err);
-      setExamError(`Error: ${err.message || 'Unknown error occurred'}`);
+      setExamError(err.message || 'Failed to generate questions. Please try again.');
     } finally {
       setExamLoading(false);
     }
@@ -185,6 +189,7 @@ const ZeroFailureZone = () => {
         .from('quiz_results')
         .insert([
           {
+            user_id: user?.id,
             topic,
             score,
             total_questions: total,
@@ -219,10 +224,10 @@ const ZeroFailureZone = () => {
   return (
     <div className="min-h-screen p-8 max-w-7xl mx-auto">
       <header className="mb-10 text-center">
-        <h2 className="text-4xl font-black text-white tracking-tighter mb-2">
-          Zero-Failure <span className="text-violet-500">Zone</span>
+        <h2 className={`text-4xl font-black tracking-tighter mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Zero-Failure <span className={isDark ? 'text-violet-500' : 'text-violet-600'}>Zone</span>
         </h2>
-        <p className="text-zinc-400">Precision Analysis & Exam Readiness</p>
+        <p className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Precision Analysis & Exam Readiness</p>
       </header>
 
       {/* Tabs */}
@@ -230,8 +235,8 @@ const ZeroFailureZone = () => {
         <button
           onClick={() => setActiveTab('checker')}
           className={`px-8 py-3 rounded-full font-bold transition-all flex items-center gap-2 ${activeTab === 'checker'
-            ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
-            : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+            ? (isDark ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'bg-violet-600 text-white shadow-lg shadow-violet-600/20')
+            : (isDark ? 'bg-zinc-900 text-zinc-500 hover:text-zinc-300' : 'bg-white/50 text-gray-500 hover:text-gray-700')
             }`}
         >
           <FileText size={18} /> File Checker Bot
@@ -240,7 +245,7 @@ const ZeroFailureZone = () => {
           onClick={() => setActiveTab('exam')}
           className={`px-8 py-3 rounded-full font-bold transition-all flex items-center gap-2 ${activeTab === 'exam'
             ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20'
-            : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+            : (isDark ? 'bg-zinc-900 text-zinc-500 hover:text-zinc-300' : 'bg-white/50 text-gray-500 hover:text-gray-700')
             }`}
         >
           <BookOpen size={18} /> Exam Prep Bot
@@ -458,15 +463,22 @@ const ZeroFailureZone = () => {
                       <div className="space-y-4">
                         <textarea
                           placeholder="Type your answer here..."
-                          className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white"
+                          className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white resize-none focus:outline-none focus:border-amber-500/50"
                           rows={3}
                         />
-                        <button
-                          onClick={() => setShowExplanation(true)}
-                          className="text-amber-500 text-sm font-bold hover:underline"
-                        >
-                          Reveal Model Answer
-                        </button>
+                        {!showExplanation && (
+                          <button
+                            onClick={() => { setShowExplanation(true); setSelectedOption('revealed'); }}
+                            className="text-amber-500 text-sm font-bold hover:underline"
+                          >
+                            Reveal Model Answer
+                          </button>
+                        )}
+                        {showExplanation && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-sm">
+                            <strong>Answer:</strong> {examData.questions[currentQuestionIdx].correct_answer}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

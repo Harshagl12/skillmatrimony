@@ -21,6 +21,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { fetchDynamicPhoto } from '../lib/api';
 import { trackEvent } from '../lib/analytics';
+import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 
 const CATEGORIES = [
   { name: 'Hackathons', icon: Code, color: 'text-blue-400' },
@@ -77,6 +79,8 @@ interface Event {
 }
 
 const EventHub = () => {
+  const { user } = useAuth();
+  const { isDark } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [events, setEvents] = useState<Event[]>([]);
@@ -165,6 +169,7 @@ const EventHub = () => {
         category: newEvent.category,
         tags: newEvent.tags.split(',').map(t => t.trim()).filter(Boolean),
         image_url: imageUrl,
+        created_by: user?.id,
       };
 
       const { error } = await supabase.from('events').insert([eventData]);
@@ -217,12 +222,12 @@ const EventHub = () => {
     <div className="p-8 max-w-7xl mx-auto min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div>
-          <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">Event <span className="text-violet-500">Hub</span></h2>
-          <p className="text-zinc-400">Discover and participate in inter-college events across the globe.</p>
+          <h2 className={`text-4xl font-bold mb-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Event <span className={isDark ? 'text-violet-500' : 'text-violet-600'}>Hub</span></h2>
+          <p className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Discover and participate in inter-college events across the globe.</p>
         </div>
         <button
           onClick={() => setShowPublishModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-violet-600/20 active:scale-95"
+          className={`flex items-center gap-2 px-6 py-3 text-white font-bold rounded-2xl transition-all active:scale-95 ${isDark ? 'bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-600/20' : 'bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-600/20'}`}
         >
           <PlusCircle size={20} />
           Publish Event
@@ -237,7 +242,7 @@ const EventHub = () => {
             placeholder="Search colleges, events or technologies..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50 transition-all"
+            className={`w-full rounded-2xl py-4 pl-12 pr-4 focus:outline-none transition-all ${isDark ? 'bg-zinc-900 border border-white/5 text-white placeholder:text-zinc-600 focus:border-violet-500/50' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30 text-gray-900 placeholder:text-gray-400 focus:border-violet-500'}`}
           />
         </div>
       </div>
@@ -245,7 +250,7 @@ const EventHub = () => {
       <div className="flex flex-wrap gap-3 mb-12">
         <button
           onClick={() => setSelectedCategory('All')}
-          className={`px-6 py-2.5 rounded-xl font-medium transition-all ${selectedCategory === 'All' ? 'bg-violet-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+          className={`px-6 py-2.5 rounded-xl font-medium transition-all ${selectedCategory === 'All' ? (isDark ? 'bg-violet-600 text-white' : 'bg-violet-600 text-white') : (isDark ? 'bg-white/5 text-zinc-400 hover:bg-white/10' : 'bg-white/50 text-gray-500 hover:bg-white/70')}`}
         >
           All
         </button>
@@ -254,8 +259,8 @@ const EventHub = () => {
             key={cat.name}
             onClick={() => setSelectedCategory(cat.name)}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${selectedCategory === cat.name
-              ? 'bg-violet-600 text-white'
-              : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+              ? (isDark ? 'bg-violet-600 text-white' : 'bg-violet-600 text-white')
+              : (isDark ? 'bg-white/5 text-zinc-400 hover:bg-white/10' : 'bg-white/50 text-gray-500 hover:bg-white/70')
               }`}
           >
             <cat.icon size={18} className={selectedCategory === cat.name ? 'text-white' : cat.color} />
@@ -289,7 +294,7 @@ const EventHub = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 whileHover={{ y: -8 }}
-                className="bg-zinc-900 border border-white/5 rounded-[2rem] overflow-hidden group shadow-xl"
+                className={`rounded-[2rem] overflow-hidden group shadow-xl transition-colors ${isDark ? 'bg-zinc-900 border border-white/5' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30'}`}
               >
                 <div className="h-56 relative overflow-hidden">
                   {event.image ? (

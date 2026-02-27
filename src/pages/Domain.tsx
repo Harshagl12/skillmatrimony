@@ -16,6 +16,7 @@ import DomainExplorer from './domain/DomainExplorer';
 import CurrentTrends from './domain/CurrentTrends';
 import KnowYourDomain from './domain/KnowYourDomain';
 import { trackEvent } from '../lib/analytics';
+import { useTheme } from '../hooks/useTheme';
 
 const TABS = [
   {
@@ -43,6 +44,7 @@ const TABS = [
 
 const Domain = () => {
   const [activeTab, setActiveTab] = useState('explore');
+  const { isDark } = useTheme();
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -53,10 +55,10 @@ const Domain = () => {
     <div className="p-8 max-w-7xl mx-auto min-h-screen">
       {/* Page Header */}
       <header className="mb-10">
-        <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">
-          Domain <span className="text-violet-500">Exploration</span>
+        <h2 className={`text-4xl font-bold mb-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Domain <span className={isDark ? 'text-violet-500' : 'text-violet-600'}>Exploration</span>
         </h2>
-        <p className="text-zinc-400">Discover your perfect career path — explore, learn, and map your future.</p>
+        <p className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Discover your perfect career path — explore, learn, and map your future.</p>
       </header>
 
       {/* Tab Navigation */}
@@ -70,8 +72,8 @@ const Domain = () => {
               className={`
                 flex items-center gap-3 px-6 py-3.5 rounded-2xl font-medium transition-all relative overflow-hidden
                 ${isActive
-                  ? 'bg-violet-600 text-white shadow-xl shadow-violet-600/20'
-                  : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/5'
+                  ? (isDark ? 'bg-violet-600 text-white shadow-xl shadow-violet-600/20' : 'bg-violet-600 text-white shadow-xl shadow-violet-600/20')
+                  : (isDark ? 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/5' : 'bg-white/50 text-gray-500 hover:bg-white/70 hover:text-gray-800 border border-violet-200/30')
                 }
               `}
             >

@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import {
     TrendingUp,
     Flame,
-    Briefcase,
     Rocket,
     Star,
     GitFork,
@@ -18,6 +17,7 @@ import {
     Hash,
     ArrowUpRight,
     RefreshCw,
+    BarChart2,
 } from 'lucide-react';
 import {
     fetchTrendingRepos,
@@ -32,6 +32,9 @@ import { trackEvent } from '../../lib/analytics';
 const Shimmer = ({ className = '' }: { className?: string }) => (
     <div className={`animate-pulse bg-white/5 rounded-2xl ${className}`} />
 );
+
+// Relevant tech tags for engineering students
+const ARTICLE_TAGS = ['webdev', 'ai', 'programming', 'career'];
 
 const CurrentTrends = () => {
     const [repos, setRepos] = useState<GitHubRepo[]>([]);
@@ -48,11 +51,18 @@ const CurrentTrends = () => {
             .then(setRepos)
             .finally(() => setLoading(p => ({ ...p, repos: false })));
 
-        fetchDevToArticles('technology', 8)
-            .then(setArticles)
+        // Fetch from multiple relevant tags, merge and deduplicate
+        Promise.all(ARTICLE_TAGS.map(tag => fetchDevToArticles(tag, 4)))
+            .then(results => {
+                const all = results.flat();
+                // Deduplicate by id, sort by reactions (most popular first)
+                const unique = Array.from(new Map(all.map(a => [a.id, a])).values());
+                unique.sort((a, b) => b.reactions - a.reactions);
+                setArticles(unique.slice(0, 8));
+            })
             .finally(() => setLoading(p => ({ ...p, articles: false })));
 
-        fetchStackOverflowTags(20)
+        fetchStackOverflowTags(15)
             .then(setTags)
             .finally(() => setLoading(p => ({ ...p, tags: false })));
     };
@@ -65,8 +75,14 @@ const CurrentTrends = () => {
         setTimeout(() => setRefreshing(false), 800);
     };
 
+    const formatCount = (n: number) => {
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+        if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+        return n.toLocaleString();
+    };
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-10">
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-2xl font-bold text-white mb-1">Career Trend Feed</h3>
@@ -130,17 +146,26 @@ const CurrentTrends = () => {
                 )}
             </section>
 
-            {/* ===== 🚀 EMERGING DOMAINS — Dev.to ===== */}
+            {/* ===== 🚀 INDUSTRY INSIGHTS — Dev.to ===== */}
             <section>
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <Rocket size={20} className="text-emerald-500" />
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-white">Emerging Domains</h4>
-                        <p className="text-zinc-500 text-xs">Future-ready fields trending in the developer community</p>
+                        <h4 className="text-lg font-bold text-white">Industry Insights</h4>
+                        <p className="text-zinc-500 text-xs">Trending articles from the developer community</p>
                     </div>
                     <span className="text-[9px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-white/5 ml-auto">Dev.to API</span>
+                </div>
+
+                {/* Category pills */}
+                <div className="flex gap-2 mb-5 flex-wrap">
+                    {ARTICLE_TAGS.map(tag => (
+                        <span key={tag} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-medium rounded-full border border-emerald-500/10 capitalize">
+                            {tag}
+                        </span>
+                    ))}
                 </div>
 
                 {loading.articles ? (
@@ -159,10 +184,18 @@ const CurrentTrends = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.04 }}
                                 whileHover={{ y: -3 }}
-                                className="group flex gap-4 p-5 rounded-2xl bg-zinc-900/80 border border-white/5 hover:border-emerald-500/20 transition-all"
+                                className="group flex gap-4 p-4 rounded-2xl bg-zinc-900/80 border border-white/5 hover:border-emerald-500/20 transition-all overflow-hidden"
                             >
                                 {article.coverImage && (
-                                    <img src={article.coverImage} alt="" className="w-24 h-20 rounded-xl object-cover shrink-0 hidden sm:block" />
+                                    <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 hidden sm:block relative">
+                                        <img
+                                            src={article.coverImage}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                                    </div>
                                 )}
                                 <div className="flex-1 min-w-0">
                                     <h5 className="text-white text-sm font-bold line-clamp-2 mb-2 group-hover:text-emerald-400 transition-colors">
@@ -187,43 +220,62 @@ const CurrentTrends = () => {
             <section>
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                        <Briefcase size={20} className="text-violet-500" />
+                        <BarChart2 size={20} className="text-violet-500" />
                     </div>
                     <div>
                         <h4 className="text-lg font-bold text-white">Most In-Demand Skills</h4>
-                        <p className="text-zinc-500 text-xs">Top technologies developers are asking about</p>
+                        <p className="text-zinc-500 text-xs">Technologies ranked by developer activity on Stack Overflow</p>
                     </div>
                     <span className="text-[9px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-white/5 ml-auto">Stack Overflow</span>
                 </div>
 
                 {loading.tags ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        {[...Array(10)].map((_, i) => <Shimmer key={i} className="h-20" />)}
+                    <div className="space-y-3">
+                        {[...Array(8)].map((_, i) => <Shimmer key={i} className="h-12" />)}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        {tags.map((tag, i) => {
+                    <div className="space-y-2">
+                        {tags.slice(0, 15).map((tag, i) => {
                             const maxCount = tags[0]?.count || 1;
                             const pct = Math.round((tag.count / maxCount) * 100);
+                            // Color gradient based on rank
+                            const colors = [
+                                'from-violet-500 to-purple-500',
+                                'from-indigo-500 to-violet-500',
+                                'from-blue-500 to-indigo-500',
+                            ];
+                            const colorClass = colors[Math.min(Math.floor(i / 5), colors.length - 1)];
+
                             return (
                                 <motion.div
                                     key={tag.name}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.02 }}
-                                    className="p-4 rounded-2xl bg-zinc-900/80 border border-white/5 hover:border-violet-500/20 transition-all relative overflow-hidden group"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.03 }}
+                                    className="group relative p-3 rounded-xl bg-zinc-900/60 border border-white/5 hover:border-violet-500/20 transition-all overflow-hidden"
                                 >
                                     {/* Background fill bar */}
-                                    <div
-                                        className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-700 group-hover:h-full group-hover:opacity-10"
-                                        style={{ width: `${pct}%` }}
+                                    <motion.div
+                                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${colorClass} opacity-[0.07] group-hover:opacity-[0.12] transition-opacity`}
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${pct}%` }}
+                                        transition={{ duration: 0.8, delay: i * 0.05, ease: 'easeOut' }}
                                     />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Hash size={12} className="text-violet-400" />
-                                            <span className="text-white font-bold text-xs">{tag.name}</span>
+                                    <div className="relative z-10 flex items-center gap-4">
+                                        <span className="text-zinc-600 text-[10px] font-bold w-5 text-right shrink-0">#{i + 1}</span>
+                                        <Hash size={12} className="text-violet-400 shrink-0" />
+                                        <span className="text-white font-bold text-sm flex-1">{tag.name}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-zinc-500 text-xs">{formatCount(tag.count)} questions</span>
+                                            <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                                                <motion.div
+                                                    className={`h-full rounded-full bg-gradient-to-r ${colorClass}`}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${pct}%` }}
+                                                    transition={{ duration: 0.8, delay: i * 0.05 }}
+                                                />
+                                            </div>
                                         </div>
-                                        <p className="text-zinc-500 text-[10px]">{tag.count.toLocaleString()} questions</p>
                                     </div>
                                 </motion.div>
                             );
@@ -243,3 +295,4 @@ const CurrentTrends = () => {
 };
 
 export default CurrentTrends;
+

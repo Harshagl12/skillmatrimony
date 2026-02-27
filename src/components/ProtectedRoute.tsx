@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -9,7 +9,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#05010a] flex items-center justify-center">
+            <div className="min-h-screen bg-[#000b1e] flex items-center justify-center">
                 <Loader2 className="animate-spin text-violet-500" size={40} />
             </div>
         );

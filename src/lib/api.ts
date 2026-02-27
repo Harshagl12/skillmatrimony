@@ -160,11 +160,11 @@ export interface BotAnalysisResult {
     overall_verdict: string;
 }
 // =============================================
-// MOCK DATA FALLBACKS (For when API Quota is Exceeded)
+// MOCK DATA FALLBACKS (Only used when all APIs fail)
 // =============================================
 const MOCK_ANALYSIS_RESULT: BotAnalysisResult = {
     score: 85,
-    overall_verdict: "This is a solid submission with a clear structure. However, the formatting needs standardization. (Mock Mode Active due to API Quota)",
+    overall_verdict: "⚠️ DEMO MODE — No LLM API available. This is sample feedback.",
     errors: [
         { type: "Formatting", description: "Inconsistent font sizes used in headers.", location: "Page 1, Header 2", fix: "Standardize all H2 headers to 18pt font." },
         { type: "Grammar", description: "Sentence fragment found.", location: "Introduction, Paragraph 1", fix: "Complete the sentence to ensure clarity." }
@@ -179,72 +179,139 @@ const MOCK_ANALYSIS_RESULT: BotAnalysisResult = {
     ]
 };
 
-const MOCK_EXAM_RESULT: ExamResult = {
-    questions: [
-        { question: "What is the primary function of a capacitor in a circuit?", options: ["store energy", "dissipate heat", "amplify signal", "convert voltage"], correct_answer: "store energy", explanation: "Capacitors store electrical energy in an electric field.", difficulty_level: "Easy", type: "MCQ" },
-        { question: "Which law states that V = IR?", options: ["Newton's Law", "Ohm's Law", "Kirchhoff's Law", "Faraday's Law"], correct_answer: "Ohm's Law", explanation: "Ohm's Law relates voltage, current, and resistance.", difficulty_level: "Easy", type: "MCQ" },
-        { question: "Explain the difference between AC and DC current.", options: [], correct_answer: "AC alternates direction, DC flows one way", explanation: "Alternating Current (AC) changes direction periodically, while Direct Current (DC) flows in a single direction.", difficulty_level: "Medium", type: "Short Answer" },
-        { question: "What is the unit of Inductance?", options: ["Farad", "Ohm", "Henry", "Tesla"], correct_answer: "Henry", explanation: "The SI unit of inductance is the Henry (H).", difficulty_level: "Medium", type: "MCQ" },
-        { question: "Describe how a transformer works.", options: [], correct_answer: "Mutual induction", explanation: "Transformers transfer energy between circuits via electromagnetic induction.", difficulty_level: "Hard", type: "Application" }
-    ]
-};
+// =============================================
+// LLM Call Chain: Groq → Gemini → Fallback
+// =============================================
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
-export async function analyzeDocumentForBot(fileText: string, docType: string): Promise<BotAnalysisResult | null> {
-    if (!GEMINI_KEY) {
-        console.warn("Gemini Key Missing - Returning Mock Data for Demo");
-        return MOCK_ANALYSIS_RESULT;
+async function callGroq(prompt: string, temperature = 0.7, maxTokens = 2048): Promise<string> {
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_KEY}`,
+        },
+        body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            temperature,
+            max_tokens: maxTokens,
+            response_format: { type: 'json_object' },
+        }),
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Groq API ${res.status}: ${errorText}`);
     }
 
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`;
-        const prompt = `You are an expert academic and career document reviewer. Analyze this ${docType} 
-        and return JSON: {
-            "score": <0-100>, 
-            "errors": [{"type": "string", "description": "string", "location": "string", "fix": "string"}], 
-            "warnings": [{"type": "string", "description": "string", "suggestion": "string"}], 
-            "strengths": ["string"], 
-            "overall_verdict": "string"
-        }. 
-        Be specific, actionable, student-friendly.
-        
-        Document Text:
-        ${fileText.substring(0, 5000)}`;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+}
 
+async function callGemini(prompt: string, temperature = 0.7, maxTokens = 2048): Promise<string> {
+    const models = ['gemini-2.0-flash-lite', 'gemini-2.0-flash'];
+    for (let i = 0; i < models.length; i++) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${models[i]}:generateContent?key=${GEMINI_KEY}`;
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.5, maxOutputTokens: 2048 },
+                generationConfig: { temperature, maxOutputTokens: maxTokens },
             }),
         });
+        if (res.ok) {
+            const data = await res.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+        if (res.status === 429 && i < models.length - 1) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+        }
+    }
+    throw new Error('All Gemini models quota exhausted');
+}
 
-        if (!res.ok) {
-            if (res.status === 429) {
-                console.warn("Gemini Quota Exceeded. Switching to Demo Mode.");
-                return MOCK_ANALYSIS_RESULT;
+// Smart LLM caller: tries Groq first (free + fast), then Gemini
+async function callLLM(prompt: string, temperature = 0.7, maxTokens = 2048): Promise<string> {
+    // 1. Try Groq first (free, fast, high limits)
+    if (GROQ_KEY) {
+        try {
+            const result = await callGroq(prompt, temperature, maxTokens);
+            if (result) {
+                console.log('[LLM] ✅ Groq responded');
+                return result;
             }
-            throw new Error(`Gemini API Error ${res.status}: ${await res.text()}`);
+        } catch (err) {
+            console.warn('[LLM] Groq failed, trying Gemini...', err);
         }
+    }
 
-        const data = await res.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        if (!rawText) throw new Error("Empty response");
-
-        let jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const firstBrace = jsonStr.indexOf('{');
-        const lastBrace = jsonStr.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    // 2. Try Gemini as fallback
+    if (GEMINI_KEY) {
+        try {
+            const result = await callGemini(prompt, temperature, maxTokens);
+            if (result) {
+                console.log('[LLM] ✅ Gemini responded');
+                return result;
+            }
+        } catch (err) {
+            console.warn('[LLM] Gemini failed too', err);
         }
+    }
 
-        return JSON.parse(jsonStr);
+    throw new Error('All LLM providers failed. Check your API keys.');
+}
+
+// Helper: extract JSON from LLM response
+function extractJSON(rawText: string): any {
+    let jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const firstBrace = jsonStr.indexOf('{');
+    const lastBrace = jsonStr.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
+    return JSON.parse(jsonStr);
+}
+
+// =============================================
+// Zero-Failure Zone: 5.1 File Checker Bot
+// =============================================
+export async function analyzeDocumentForBot(fileText: string, docType: string): Promise<BotAnalysisResult | null> {
+    if (!GROQ_KEY && !GEMINI_KEY) {
+        console.warn("No LLM keys found - returning demo data");
+        return MOCK_ANALYSIS_RESULT;
+    }
+
+    try {
+        const prompt = `You are an expert VTU (Visvesvaraya Technological University) academic document reviewer.
+Analyze this ${docType} submitted by an engineering student and return ONLY valid JSON:
+{
+    "score": <0-100>,
+    "errors": [{"type": "string", "description": "string", "location": "string", "fix": "string"}],
+    "warnings": [{"type": "string", "description": "string", "suggestion": "string"}],
+    "strengths": ["string"],
+    "overall_verdict": "string"
+}
+
+RULES:
+- Be SPECIFIC to the actual content. Reference real sections, sentences, and paragraphs from the document
+- Evaluate based on VTU academic standards (formatting, technical depth, citations)
+- Each error/warning must cite the actual text
+- Give actionable suggestions a VTU student can immediately apply
+- Be encouraging but honest
+
+Document Text:
+${fileText.substring(0, 8000)}`;
+
+        const rawText = await callLLM(prompt, 0.5, 2048);
+        return extractJSON(rawText);
 
     } catch (err: any) {
-        console.error('[Gemini] Analysis error:', err);
-        // Fallback to mock data on error so demo continues working
-        return MOCK_ANALYSIS_RESULT;
+        console.error('[LLM] Analysis error:', err);
+        throw new Error(`Document analysis failed: ${err.message}`);
     }
 }
 
@@ -264,71 +331,151 @@ export interface ExamResult {
     questions: ExamQuestion[];
 }
 
+// Topic-specific fallback question banks
+const FALLBACK_QUESTION_BANKS: Record<string, ExamQuestion[]> = {
+    python: [
+        { question: "What is the output of print(type([]) is list)?", options: ["True", "False", "Error", "None"], correct_answer: "True", explanation: "type([]) returns <class 'list'>, which is the same as list, so True.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Which keyword creates a generator in Python?", options: ["generate", "yield", "return", "iter"], correct_answer: "yield", explanation: "yield pauses the function and returns a value, creating a generator.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What does __init__ do in a Python class?", options: ["Destroys the object", "Initializes attributes", "Returns class name", "Creates static method"], correct_answer: "Initializes attributes", explanation: "__init__ is the constructor called when creating an object.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Difference between list and tuple?", options: ["Lists immutable, tuples mutable", "Tuples immutable, lists mutable", "Both mutable", "Both immutable"], correct_answer: "Tuples immutable, lists mutable", explanation: "Lists can be modified, tuples cannot.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is a decorator in Python?", options: ["Modifies another function", "A data structure", "A loop construct", "An error handler"], correct_answer: "Modifies another function", explanation: "Decorators wrap functions to extend behavior using @syntax.", difficulty_level: "Medium", type: "MCQ" },
+    ],
+    javascript: [
+        { question: "What is typeof null in JavaScript?", options: ["null", "undefined", "object", "boolean"], correct_answer: "object", explanation: "typeof null returns 'object' — a historical bug in JS.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What is a closure?", options: ["Function with outer scope access", "Way to close tabs", "A loop type", "Error handler"], correct_answer: "Function with outer scope access", explanation: "Closures remember variables from their enclosing scope.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What does 'use strict' do?", options: ["Faster code", "Strict error checking", "Imports modules", "Private variables"], correct_answer: "Strict error checking", explanation: "'use strict' catches coding errors and prevents unsafe actions.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Difference between == and ===?", options: ["Same", "=== checks type+value, == only value", "== is faster", "=== deprecated"], correct_answer: "=== checks type+value, == only value", explanation: "=== is strict equality (no type coercion), == allows type coercion.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is the event loop?", options: ["A for loop", "Async operation handler", "DOM handler", "Debugger"], correct_answer: "Async operation handler", explanation: "The event loop processes async callbacks from the task queue.", difficulty_level: "Hard", type: "MCQ" },
+    ],
+    react: [
+        { question: "What is the virtual DOM?", options: ["In-memory DOM for fast updates", "Browser extension", "SSR tool", "CSS framework"], correct_answer: "In-memory DOM for fast updates", explanation: "React diffs virtual DOM and updates only changed real DOM parts.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Which hook handles side effects?", options: ["useState", "useEffect", "useContext", "useReducer"], correct_answer: "useEffect", explanation: "useEffect runs side effects like API calls after render.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Purpose of keys in lists?", options: ["CSS styling", "Efficient re-render IDs", "Event binding", "State mgmt"], correct_answer: "Efficient re-render IDs", explanation: "Keys help React track which items changed for efficient updates.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "Difference between state and props?", options: ["Same", "State internal, props from parent", "Props mutable, state not", "State for styling"], correct_answer: "State internal, props from parent", explanation: "State is component-owned and mutable. Props are parent-passed and read-only.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is React.memo?", options: ["Memory storage", "Prevents unnecessary re-renders", "Developer notes", "Memory manager"], correct_answer: "Prevents unnecessary re-renders", explanation: "React.memo skips re-rendering when props haven't changed.", difficulty_level: "Medium", type: "MCQ" },
+    ],
+    'data structures': [
+        { question: "Time complexity of balanced BST search?", options: ["O(1)", "O(log n)", "O(n)", "O(n²)"], correct_answer: "O(log n)", explanation: "Each comparison halves the remaining nodes.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "Which structure uses FIFO?", options: ["Stack", "Queue", "Tree", "Graph"], correct_answer: "Queue", explanation: "Queue: First-In-First-Out.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is a hash collision?", options: ["Two keys same index", "Table overflow", "Data corruption", "Deletion fail"], correct_answer: "Two keys same index", explanation: "Different keys producing the same hash value.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "Worst-case QuickSort complexity?", options: ["O(n log n)", "O(n)", "O(n²)", "O(log n)"], correct_answer: "O(n²)", explanation: "Worst case when pivot is always min/max element.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "BFS uses which structure?", options: ["Stack", "Queue", "Heap", "Array"], correct_answer: "Queue", explanation: "BFS explores level-by-level using a queue.", difficulty_level: "Easy", type: "MCQ" },
+    ],
+    dbms: [
+        { question: "What does ACID stand for?", options: ["Atomicity, Consistency, Isolation, Durability", "Access, Control, Integrity, Data", "Automated, Centralized, Indexed, Distributed", "None"], correct_answer: "Atomicity, Consistency, Isolation, Durability", explanation: "ACID ensures reliable database transactions.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is normalization?", options: ["Increase redundancy", "Reduce redundancy", "Add indexes", "Encrypt data"], correct_answer: "Reduce redundancy", explanation: "Normalization organizes data to minimize redundancy.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What is a foreign key?", options: ["Ref to another table's PK", "From another DB", "Encrypted key", "Unique ID"], correct_answer: "Ref to another table's PK", explanation: "FK references another table's primary key for relationships.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "DELETE vs TRUNCATE?", options: ["Same", "DELETE row-by-row+rollback, TRUNCATE all+no rollback", "TRUNCATE slower", "DELETE drops table"], correct_answer: "DELETE row-by-row+rollback, TRUNCATE all+no rollback", explanation: "DELETE is logged and reversible, TRUNCATE is faster but irreversible.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "Which join returns all rows from both tables?", options: ["INNER", "LEFT", "FULL OUTER", "CROSS"], correct_answer: "FULL OUTER", explanation: "FULL OUTER JOIN includes all rows with NULLs for non-matches.", difficulty_level: "Medium", type: "MCQ" },
+    ],
+    os: [
+        { question: "What is a deadlock?", options: ["Fast process", "Circular resource wait", "Scheduling type", "Memory overflow"], correct_answer: "Circular resource wait", explanation: "Processes waiting for resources held by each other.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What does CPU scheduler decide?", options: ["Memory alloc", "Which process gets CPU", "Disk priority", "Bandwidth"], correct_answer: "Which process gets CPU", explanation: "Selects which ready process runs next.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is virtual memory?", options: ["Physical RAM", "Disk extends RAM", "Cache", "GPU memory"], correct_answer: "Disk extends RAM", explanation: "Uses disk to extend available memory beyond physical RAM.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What is thrashing?", options: ["Fast execution", "Excessive page faults", "CPU overheat", "Network issue"], correct_answer: "Excessive page faults", explanation: "System spends more time swapping than executing.", difficulty_level: "Hard", type: "MCQ" },
+        { question: "Which algorithm causes starvation?", options: ["Round Robin", "FCFS", "SJF", "Multilevel"], correct_answer: "SJF", explanation: "SJF starves long processes as shorter ones get priority.", difficulty_level: "Medium", type: "MCQ" },
+    ],
+    networking: [
+        { question: "TCP operates at which OSI layer?", options: ["Application", "Transport", "Network", "Data Link"], correct_answer: "Transport", explanation: "TCP is Layer 4 — Transport Layer.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What does DNS do?", options: ["File transfer", "Domain to IP translation", "Email routing", "Encryption"], correct_answer: "Domain to IP translation", explanation: "DNS resolves domain names to IP addresses.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "TCP vs UDP?", options: ["Same", "TCP reliable+handshake, UDP fast+no handshake", "UDP more reliable", "TCP connectionless"], correct_answer: "TCP reliable+handshake, UDP fast+no handshake", explanation: "TCP has 3-way handshake for reliability. UDP is connectionless and faster.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What is a subnet mask?", options: ["Encryption", "Divides network/host in IP", "Email routing", "Compression"], correct_answer: "Divides network/host in IP", explanation: "Determines network vs host portion of an IP address.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "HTTPS default port?", options: ["80", "443", "22", "8080"], correct_answer: "443", explanation: "HTTPS uses port 443 for encrypted web traffic.", difficulty_level: "Easy", type: "MCQ" },
+    ],
+    'machine learning': [
+        { question: "What is overfitting?", options: ["Good on train, bad on test", "Model too simple", "Slow training", "Too few features"], correct_answer: "Good on train, bad on test", explanation: "Model memorizes training data noise, fails to generalize.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "Purpose of cross-validation?", options: ["Data cleaning", "Evaluate on unseen data", "Feature selection", "Data augmentation"], correct_answer: "Evaluate on unseen data", explanation: "Tests model on different data folds for robust evaluation.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "Spam detection is what type of problem?", options: ["Regression", "Classification", "Clustering", "Dim Reduction"], correct_answer: "Classification", explanation: "Binary classification: spam or not spam.", difficulty_level: "Easy", type: "MCQ" },
+        { question: "What does gradient descent minimize?", options: ["Training data", "Loss function", "Features", "Learning rate"], correct_answer: "Loss function", explanation: "Iteratively adjusts parameters to minimize the cost/loss.", difficulty_level: "Medium", type: "MCQ" },
+        { question: "What is bias-variance tradeoff?", options: ["Accuracy vs speed", "Underfitting vs overfitting balance", "Features vs labels", "Train vs test split"], correct_answer: "Underfitting vs overfitting balance", explanation: "High bias=underfit, high variance=overfit. Goal: find the balance.", difficulty_level: "Hard", type: "MCQ" },
+    ],
+};
+
+function getFallbackQuestions(topic: string): ExamQuestion[] {
+    const lower = topic.toLowerCase();
+    if (FALLBACK_QUESTION_BANKS[lower]) return [...FALLBACK_QUESTION_BANKS[lower]];
+    for (const [key, questions] of Object.entries(FALLBACK_QUESTION_BANKS)) {
+        if (lower.includes(key) || key.includes(lower)) return [...questions];
+    }
+    const keywords: Record<string, string> = {
+        'js': 'javascript', 'node': 'javascript', 'typescript': 'javascript',
+        'py': 'python', 'django': 'python', 'flask': 'python',
+        'sql': 'dbms', 'database': 'dbms', 'mysql': 'dbms', 'postgres': 'dbms',
+        'operating system': 'os', 'linux': 'os',
+        'network': 'networking', 'tcp': 'networking', 'http': 'networking',
+        'ai': 'machine learning', 'ml': 'machine learning', 'deep learning': 'machine learning',
+        'dsa': 'data structures', 'algorithm': 'data structures',
+        'web': 'react', 'frontend': 'react', 'html': 'react',
+    };
+    for (const [kw, bank] of Object.entries(keywords)) {
+        if (lower.includes(kw)) return [...FALLBACK_QUESTION_BANKS[bank]];
+    }
+    return [...FALLBACK_QUESTION_BANKS['data structures']];
+}
+
 export async function generateExamQuestions(topic: string, semester: string = 'General'): Promise<ExamResult | null> {
-    if (!GEMINI_KEY) {
-        throw new Error("Gemini API Key is missing. Please check your .env file.");
+    if (!GROQ_KEY && !GEMINI_KEY) {
+        console.warn('[Exam] No LLM keys, using fallback');
+        const questions = getFallbackQuestions(topic);
+        questions.sort(() => Math.random() - 0.5);
+        return { questions };
     }
 
     try {
-        // Switch to Flash Lite for better quota handling
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`;
-        const prompt = `Generate 10 exam-style questions on "${topic}" for engineering "${semester}" level. 
-        Mix: 5 MCQ (4 options each), 3 short answer, 2 application-based. 
-        Return JSON with:
-        {
-          "questions": [
-            {
-              "question": "string",
-              "options": ["A", "B", "C", "D"], // empty array if not MCQ
-              "correct_answer": "string",
-              "explanation": "string",
-              "difficulty_level": "Easy|Medium|Hard",
-              "type": "MCQ|Short Answer|Application"
-            }
-          ]
-        }`;
+        const randomSeed = Math.floor(Math.random() * 100000);
 
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-            }),
-        });
+        const prompt = `You are a VTU (Visvesvaraya Technological University) exam question paper generator.
+Generate 10 UNIQUE exam-style questions on "${topic}" for ${semester} VTU engineering students.
 
-        if (!res.ok) {
-            const errorText = await res.text();
+CONTEXT:
+- Follow VTU exam pattern: Module-wise, theory + application mix
+- Questions should match VTU B.E./B.Tech difficulty level
+- Include questions similar to VTU previous year papers for "${topic}"
+- Use randomization seed ${randomSeed}
 
-            // Check for Quota Exceeded (429)
-            if (res.status === 429) {
-                console.warn("Gemini Quota Exceeded. Switching to Demo Mode.");
-                return MOCK_EXAM_RESULT;
-            }
+REQUIREMENTS:
+- 6 MCQ (exactly 4 options each)
+- 2 Short Answer (options = empty array [])
+- 2 Application-based (options = empty array [])
+- Mix: 3 Easy, 4 Medium, 3 Hard
+- Questions MUST be about "${topic}" — no unrelated topics
 
-            throw new Error(`Gemini API Error ${res.status}: ${errorText}`);
+Return ONLY valid JSON:
+{
+  "questions": [
+    {
+      "question": "string",
+      "options": ["option A", "option B", "option C", "option D"],
+      "correct_answer": "exact text of correct option",
+      "explanation": "detailed VTU-style explanation",
+      "difficulty_level": "Easy|Medium|Hard",
+      "type": "MCQ|Short Answer|Application"
+    }
+  ]
+}`;
+
+        const rawText = await callLLM(prompt, 0.9, 3000);
+        const parsed = extractJSON(rawText);
+
+        if (!parsed?.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+            throw new Error('API returned no questions');
         }
 
-        const data = await res.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // MCQs first (work best with quiz UI)
+        const mcqs = parsed.questions.filter((q: ExamQuestion) => q.options && q.options.length >= 4);
+        const others = parsed.questions.filter((q: ExamQuestion) => !q.options || q.options.length < 4);
 
-        if (!rawText) throw new Error("Empty response");
-
-        let jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const firstBrace = jsonStr.indexOf('{');
-        const lastBrace = jsonStr.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-        }
-
-        return JSON.parse(jsonStr);
+        return { questions: [...mcqs, ...others].slice(0, 10) };
 
     } catch (err: any) {
-        console.error('[Gemini] Exam Gen error:', err);
-        // Fallback to mock data on error so demo continues working
-        return MOCK_EXAM_RESULT;
+        console.error('[LLM] Exam Gen error:', err);
+        console.warn(`[Exam] Falling back to question bank for "${topic}"`);
+        const questions = getFallbackQuestions(topic);
+        questions.sort(() => Math.random() - 0.5);
+        return { questions };
     }
 }
+
 
 // Re-using HF interface for consistency
 export async function analyzeDocumentWithGemini(fileText: string, userContext: string = ''): Promise<HFAnalysisResult | null> {
@@ -476,7 +623,6 @@ export interface HFAnalysisResult {
     questions?: string[]; // New field for interview prep
 }
 
-// 227: export async function analyzeDocumentWithHF(fileText: string, userContext: string = ''): Promise<HFAnalysisResult | null> {
 export async function analyzeDocumentWithHF(fileText: string, userContext: string = ''): Promise<HFAnalysisResult | null> {
     if (!HF_KEY) {
         console.warn('[HuggingFace] No API key found. Set VITE_HUGGINGFACE_API_KEY in .env');
@@ -554,11 +700,11 @@ ${fileText.substring(0, 2000)}
 
         // Fallback: return a basic analysis with randomized score to avoid "same output" feeling
         return {
-            score: Math.floor(Math.random() * (85 - 60 + 1)) + 60, // Random score between 60-85
+            score: 68, // Consistent fallback score
             issues: [
                 { type: 'clarity', text: 'Some technical terms are undefined or vague.', severity: 'medium' },
                 { type: 'impact', text: 'Quantify your achievements (use numbers/metrics).', severity: 'high' },
-                { type: 'grammar', text: ' Passive voice usage detected in key sections.', severity: 'low' },
+                { type: 'grammar', text: 'Passive voice usage detected in key sections.', severity: 'low' },
             ],
             strengths: ['Structure is consistent', 'Good use of headings'],
             summary: 'The document is readable but lacks punch. Needs more concrete metrics and active voice. (AI Parsing Fallback)',

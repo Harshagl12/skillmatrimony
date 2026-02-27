@@ -1,41 +1,172 @@
 @import "tailwindcss";
 
-@source "./src/**/*.{html,js,jsx,ts,tsx}";
+@source "./**/*.{html,js,jsx,ts,tsx}";
 
-@theme {
-    --color-background: #002b36;
-    /* Using a slightly richer dark background or keeping user's choice */
-    /* Wait, I should respect the user's existing background if possible, but they want 'visuals'. I'll stick to a balanced dark theme compatible with Shadcn */
-    --color-background: #000b1e;
-    --color-foreground: #ffffff;
-
-    --color-primary: #6C3FF5;
-    --color-primary-foreground: #ffffff;
-
-    --color-secondary: #1e293b;
-    --color-secondary-foreground: #ffffff;
-
-    --color-muted: #1e293b;
-    --color-muted-foreground: #94a3b8;
-
-    --color-accent: #1e293b;
-    --color-accent-foreground: #ffffff;
-
-    --color-destructive: #ef4444;
-    --color-destructive-foreground: #ffffff;
-
-    --color-border: #1e293b;
-    --color-input: #1e293b;
-    --color-ring: #6C3FF5;
-
-    --radius-lg: 0.5rem;
-    --radius-md: 0.375rem;
-    --radius-sm: 0.25rem;
+/* ===== Light Mode (default root) ===== */
+:root {
+    --card: rgba(255, 255, 255, 0.8);
+    --ring: rgb(102, 51, 238);
+    --input: rgb(218, 220, 224);
+    --muted: rgba(247, 244, 255, 0.7);
+    --accent: rgb(102, 51, 238);
+    --border: rgba(102, 51, 238, 0.15);
+    --radius: 0.5rem;
+    --popover: rgba(255, 255, 255, 0.95);
+    --primary: rgb(102, 51, 238);
+    --font-mono: monospace;
+    --font-sans: 'Inter', sohne, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --secondary: rgba(247, 244, 255, 0.7);
+    --background: rgb(255, 255, 255);
+    --font-serif: gt-super, Georgia, Cambria, "Times New Roman", Times, serif;
+    --foreground: rgb(36, 36, 36);
+    --destructive: #ef4444;
+    --card-foreground: rgb(36, 36, 36);
+    --muted-foreground: rgb(107, 107, 107);
+    --accent-foreground: rgb(255, 255, 255);
+    --popover-foreground: rgb(36, 36, 36);
+    --primary-foreground: rgb(255, 255, 255);
+    --secondary-foreground: rgb(36, 36, 36);
+    --destructive-foreground: #ffffff;
 }
 
+/* ===== Dark Mode ===== */
+.dark {
+    --card: rgb(25, 25, 25);
+    --ring: rgb(108, 63, 245);
+    --input: rgb(36, 36, 36);
+    --muted: rgb(0, 0, 0);
+    --accent: rgb(108, 63, 245);
+    --border: rgb(36, 36, 36);
+    --popover: rgb(25, 25, 25);
+    --primary: rgb(108, 63, 245);
+    --secondary: rgb(0, 0, 0);
+    --background: rgb(0, 11, 30);
+    --foreground: rgb(255, 255, 255);
+    --destructive: #ef4444;
+    --card-foreground: rgb(255, 255, 255);
+    --muted-foreground: rgb(107, 107, 107);
+    --accent-foreground: rgb(255, 255, 255);
+    --popover-foreground: rgb(255, 255, 255);
+    --primary-foreground: rgb(255, 255, 255);
+    --secondary-foreground: rgb(255, 255, 255);
+    --destructive-foreground: #ffffff;
+}
+
+@theme inline {
+    --color-card: var(--card);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-muted: var(--muted);
+    --color-accent: var(--accent);
+    --color-border: var(--border);
+    --color-radius: var(--radius);
+    --color-popover: var(--popover);
+    --color-primary: var(--primary);
+    --color-font-mono: var(--font-mono);
+    --color-font-sans: var(--font-sans);
+    --color-secondary: var(--secondary);
+    --color-background: var(--background);
+    --color-font-serif: var(--font-serif);
+    --color-foreground: var(--foreground);
+    --color-destructive: var(--destructive);
+    --color-card-foreground: var(--card-foreground);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    /* Violet theme colors */
+    --color-v-primary: #6C3FF5;
+    --color-v-bg: #000b1e;
+    --color-v-card: #0a0a1a;
+}
+
+/* ===== Body ===== */
 body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+.dark body {
+    background-color: #000b1e;
+    color: #ffffff;
+}
+
+.light body {
+    background-color: transparent;
+    color: #242424;
+}
+
+/* ===== Custom Scrollbar ===== */
+.dark ::-webkit-scrollbar,
+.dark::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: rgba(0, 11, 30, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(108, 63, 245, 0.4);
+    border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 63, 245, 0.8);
+}
+
+.light ::-webkit-scrollbar,
+.light::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.light ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: rgba(102, 51, 238, 0.2);
+    border-radius: 10px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 51, 238, 0.4);
+}
+
+/* ===== Select dropdowns ===== */
+.dark select,
+.dark select option {
+    background-color: #0a0a1a;
+    color: #e4e4e7;
+}
+
+.dark select option:checked {
+    background-color: #6C3FF5;
+    color: #fff;
+}
+
+.dark select option:hover {
+    background-color: #1e1e3a;
+}
+
+.light select,
+.light select option {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #242424;
+}
+
+.light select option:checked {
+    background-color: rgb(102, 51, 238);
+    color: #fff;
+}
+
+.light select option:hover {
+    background-color: rgba(247, 244, 255, 0.9);
 }
