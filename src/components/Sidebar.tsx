@@ -32,10 +32,10 @@ const Sidebar = () => {
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className={cn(
-        "w-64 h-screen backdrop-blur-3xl border-r flex flex-col p-6 fixed left-0 top-0 z-50 transition-all duration-300",
+        "w-64 h-screen flex flex-col p-8 fixed left-0 top-0 z-50 transition-all duration-300",
         isDark
-          ? "bg-[#0a0214]/70 border-violet-500/20 shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
-          : "bg-white/60 border-violet-200/40 shadow-[4px_0_20px_rgba(102,51,238,0.06)]"
+          ? "bg-transparent text-zinc-300"
+          : "bg-transparent text-gray-600"
       )}
     >
       <div className="flex items-center gap-3 mb-12">
@@ -57,7 +57,7 @@ const Sidebar = () => {
         </h1>
       </div>
 
-      <nav className="flex-1 space-y-1.5">
+      <nav className="flex-1 space-y-2 mt-8">
         {menuItems.map((item, i) => {
           const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
           const isDashboardActive = item.path === '/' && location.pathname === '/';
@@ -73,38 +73,32 @@ const Sidebar = () => {
               <Link
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                  "flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-300 group relative",
                   isItemActive
                     ? isDark
-                      ? "bg-violet-600/10 border border-violet-500/30 text-white"
-                      : "bg-violet-600/10 border border-violet-500/25 text-violet-800"
+                      ? "text-white font-semibold"
+                      : "text-violet-900 font-semibold"
                     : isDark
-                      ? "text-zinc-500 hover:text-white hover:bg-white/5"
-                      : "text-gray-400 hover:text-gray-800 hover:bg-white/40"
+                      ? "text-zinc-500 hover:text-zinc-300"
+                      : "text-gray-500 hover:text-gray-900"
                 )}
               >
-                <div className={cn(
-                  "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-                  isDark
-                    ? "bg-gradient-to-r from-violet-500/10 to-transparent"
-                    : "bg-gradient-to-r from-violet-500/5 to-transparent"
-                )} />
-                <item.icon className={cn(
-                  "size-5 transition-transform duration-300 group-hover:scale-110 relative z-10",
-                  isItemActive && (isDark ? "text-violet-400" : "text-violet-600")
-                )} />
-                <span className="font-medium relative z-10">{item.label}</span>
+                {/* Minimal Active Indicator Line */}
                 {isItemActive && (
                   <motion.div
-                    layoutId="active-pill"
+                    layoutId="active-nav-line"
                     className={cn(
-                      "ml-auto w-1.5 h-1.5 rounded-full relative z-10",
-                      isDark
-                        ? "bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]"
-                        : "bg-violet-500 shadow-[0_0_8px_rgba(102,51,238,0.5)]"
+                      "absolute left-0 top-1/4 bottom-1/4 w-[2px] rounded-r-full",
+                      isDark ? "bg-violet-400" : "bg-violet-600"
                     )}
                   />
                 )}
+
+                <item.icon className={cn(
+                  "size-5 transition-transform duration-300",
+                  isItemActive ? (isDark ? "text-violet-400" : "text-violet-600") : "group-hover:scale-110"
+                )} />
+                <span className="tracking-wide text-sm">{item.label}</span>
               </Link>
             </motion.div>
           );
@@ -123,15 +117,14 @@ const Sidebar = () => {
         <button
           onClick={() => signOut()}
           className={cn(
-            "flex items-center gap-4 px-4 py-3 rounded-xl transition-colors w-full group overflow-hidden relative",
+            "flex items-center gap-4 px-4 py-3 rounded-lg transition-colors w-full group",
             isDark
-              ? "text-zinc-500 hover:text-red-400 hover:bg-red-400/5"
-              : "text-gray-400 hover:text-red-500 hover:bg-red-50/50"
+              ? "text-zinc-500 hover:text-zinc-300"
+              : "text-gray-500 hover:text-gray-800"
           )}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform relative z-10" />
-          <span className="font-medium relative z-10">Logout</span>
+          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="tracking-wide text-sm">Logout</span>
         </button>
       </motion.div>
     </motion.div>

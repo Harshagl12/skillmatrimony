@@ -23,22 +23,25 @@ function AnalyticsTracker() {
   return null;
 }
 
+import { Noise } from './components/ui/noise';
+import { DarkModeBackground } from './components/ui/background-snippets';
+
 // Layout wrapper for authenticated pages
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isDark } = useTheme();
 
   return (
     <div className={`flex min-h-screen font-sans transition-colors duration-300 relative ${isDark
-      ? 'bg-[#000b1e] text-zinc-100 selection:bg-violet-500 selection:text-white'
+      ? 'bg-transparent text-zinc-100 selection:bg-violet-500/30 selection:text-white'
       : 'text-[#242424] selection:bg-violet-500/30 selection:text-violet-900'
       }`}>
+
+      {/* Global Noise Texture for Premium Feel */}
+      <Noise />
+
       {/* Background */}
       {isDark ? (
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[20%] w-[60%] h-[50%] bg-blue-700/20 blur-[120px] rounded-full mix-blend-screen" />
-          <div className="absolute top-[-10%] left-[35%] w-[30%] h-[40%] bg-white/5 blur-[80px] rounded-full mix-blend-overlay" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[60%] bg-blue-900/10 blur-[130px] rounded-full" />
-        </div>
+        <DarkModeBackground />
       ) : (
         <BgGradient
           gradientFrom="#fff"
@@ -46,13 +49,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           gradientSize="125% 125%"
           gradientPosition="50% 10%"
           gradientStop="40%"
-          className="fixed"
+          className="fixed z-0"
         />
       )}
 
+      {/* Unbordered transparent sidebar container */}
       <Sidebar />
 
-      <main className="flex-1 ml-64 min-h-screen relative z-10">
+      <main className="flex-1 ml-64 min-h-screen relative z-10 px-8 py-8 md:px-12 md:py-12">
         {children}
       </main>
     </div>

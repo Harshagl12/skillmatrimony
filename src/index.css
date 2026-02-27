@@ -31,23 +31,23 @@
 
 /* ===== Dark Mode ===== */
 .dark {
-    --card: rgb(25, 25, 25);
+    --card: rgb(15, 17, 21);
     --ring: rgb(108, 63, 245);
-    --input: rgb(36, 36, 36);
-    --muted: rgb(0, 0, 0);
-    --accent: rgb(108, 63, 245);
-    --border: rgb(36, 36, 36);
-    --popover: rgb(25, 25, 25);
-    --primary: rgb(108, 63, 245);
-    --secondary: rgb(0, 0, 0);
-    --background: rgb(0, 11, 30);
-    --foreground: rgb(255, 255, 255);
+    --input: rgb(28, 31, 38);
+    --muted: rgb(10, 10, 12);
+    --accent: rgb(220, 220, 220);
+    --border: rgb(28, 31, 38);
+    --popover: rgb(15, 17, 21);
+    --primary: rgb(255, 255, 255);
+    --secondary: rgb(28, 31, 38);
+    --background: rgb(10, 10, 12);
+    --foreground: rgb(237, 237, 237);
     --destructive: #ef4444;
-    --card-foreground: rgb(255, 255, 255);
-    --muted-foreground: rgb(107, 107, 107);
+    --card-foreground: rgb(237, 237, 237);
+    --muted-foreground: rgb(140, 140, 145);
     --accent-foreground: rgb(255, 255, 255);
     --popover-foreground: rgb(255, 255, 255);
-    --primary-foreground: rgb(255, 255, 255);
+    --primary-foreground: rgb(10, 10, 12);
     --secondary-foreground: rgb(255, 255, 255);
     --destructive-foreground: #ffffff;
 }
@@ -77,10 +77,10 @@
     --color-secondary-foreground: var(--secondary-foreground);
     --color-destructive-foreground: var(--destructive-foreground);
 
-    /* Violet theme colors */
+    /* Violet theme colors (deprecating these gradually) */
     --color-v-primary: #6C3FF5;
-    --color-v-bg: #000b1e;
-    --color-v-card: #0a0a1a;
+    --color-v-bg: #0f1115;
+    --color-v-card: #15171c;
 }
 
 /* ===== Body ===== */
@@ -92,13 +92,13 @@ body {
 }
 
 .dark body {
-    background-color: #000b1e;
-    color: #ffffff;
+    background-color: #0F1115;
+    color: #EDEDED;
 }
 
 .light body {
     background-color: transparent;
-    color: #242424;
+    color: #1A1A1A;
 }
 
 /* ===== Custom Scrollbar ===== */

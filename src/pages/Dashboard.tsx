@@ -7,8 +7,6 @@ import {
   Github,
   Award,
   Calendar,
-  Flame,
-  BookOpen,
   CheckCircle,
   ArrowRight,
 } from 'lucide-react';
@@ -21,6 +19,7 @@ import { trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { cn } from '../lib/utils';
 
 // --- Types ---
 interface QuizResult {
@@ -227,84 +226,84 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header>
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`text-4xl font-bold mb-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}
-        >
-          {greeting}, <span className={isDark ? 'text-violet-500' : 'text-violet-600'}>{displayName}</span>
-        </motion.h2>
-        <p className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Track your progress, skills, and upcoming challenges.</p>
-      </header>
+    <div className="max-w-[1400px] mx-auto space-y-10">
+      {/* Hero / Bento Header */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          {
-            label: 'Skills Added',
-            value: skillCount.toString(),
-            icon: BookOpen,
-            color: 'text-blue-400',
-            bg: 'bg-blue-500/10',
-            sub: skillCount > 0 ? 'In your profile' : 'Add skills in Profile',
-            onClick: () => navigate('/profile'),
-          },
-          {
-            label: 'Quizzes Passed',
-            value: `${quizzesPassed}/${totalQuizzes}`,
-            icon: CheckCircle,
-            color: 'text-emerald-400',
-            bg: 'bg-emerald-500/10',
-            sub: totalQuizzes > 0 ? `${Math.round((quizzesPassed / totalQuizzes) * 100)}% pass rate` : 'Take a quiz!',
-            onClick: () => navigate('/zero-failure'),
-          },
-          {
-            label: 'Events Listed',
-            value: events.length.toString(),
-            icon: Calendar,
-            color: 'text-violet-400',
-            bg: 'bg-violet-500/10',
-            sub: upcomingEvents.length > 0 ? `${upcomingEvents.length} upcoming` : 'Check Event Hub',
-            onClick: () => navigate('/events'),
-          },
-          {
-            label: 'Day Streak',
-            value: dayStreak.toString(),
-            icon: Flame,
-            color: 'text-amber-400',
-            bg: 'bg-amber-500/10',
-            sub: dayStreak > 7 ? '🔥 On fire!' : 'Keep it going!',
-          },
-        ].map((stat, i) => (
+        {/* Welcome Section (Spans 8 cols) */}
+        <div className="lg:col-span-8 flex flex-col justify-end pb-4">
           <motion.div
-            key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`p-6 rounded-2xl border backdrop-blur-xl ${stat.bg} hover:scale-[1.02] transition-all cursor-pointer ${isDark ? 'border-white/5' : 'border-violet-200/30'}`}
-            onClick={() => {
-              trackEvent('stat_card_click', { stat: stat.label });
-              stat.onClick?.();
-            }}
+            className="space-y-4"
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}>
-                <stat.icon size={24} />
-              </div>
-              {stat.onClick && <ArrowRight size={14} className="text-zinc-600 mt-2" />}
-            </div>
-            <h3 className={`text-3xl font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{stat.value}</h3>
-            <p className={`text-sm font-medium ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>{stat.label}</p>
-            <p className={`text-xs mt-1 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>{stat.sub}</p>
+            <h2 className={cn(
+              "text-5xl md:text-6xl font-black tracking-tighter leading-tight",
+              isDark ? "text-white" : "text-gray-900"
+            )}>
+              {greeting},<br />
+              <span className={cn(
+                "bg-clip-text text-transparent underline decoration-4 underline-offset-[12px]",
+                isDark ? "bg-gradient-to-r from-violet-400 to-indigo-500 decoration-violet-500/30" : "bg-gradient-to-r from-violet-600 to-purple-600 decoration-violet-200"
+              )}>
+                {displayName}
+              </span>
+            </h2>
+            <p className={cn(
+              "text-lg md:text-xl font-medium tracking-tight max-w-2xl mt-6",
+              isDark ? "text-zinc-400" : "text-gray-500"
+            )}>
+              Your engineering journey at a glance. Track skills, conquer challenges, and explore domains.
+            </p>
           </motion.div>
-        ))}
-      </div>
+        </div>
+
+        {/* Minimal At-a-Glance Stats (Spans 4 cols) */}
+        <div className="lg:col-span-4 grid grid-cols-2 gap-4">
+          {[
+            { label: 'Skills Mastered', value: skillCount, onClick: () => navigate('/profile') },
+            { label: 'Quizzes Passed', value: `${quizzesPassed}/${totalQuizzes}`, onClick: () => navigate('/zero-failure') },
+            { label: 'Listed Events', value: events.length, onClick: () => navigate('/events') },
+            { label: 'Day Streak', value: `${dayStreak}🔥` }
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 + (i * 0.1) }}
+              onClick={stat.onClick}
+              className={cn(
+                "p-5 rounded-3xl transition-all relative overflow-hidden group",
+                stat.onClick && "cursor-pointer",
+                isDark
+                  ? "bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04]"
+                  : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:bg-white/60"
+              )}
+            >
+              <h3 className={cn(
+                "text-3xl font-bold tracking-tighter mb-1",
+                isDark ? "text-white" : "text-gray-900"
+              )}>{stat.value}</h3>
+              <p className={cn(
+                "text-[13px] font-medium tracking-wide uppercase",
+                isDark ? "text-zinc-500" : "text-gray-500"
+              )}>{stat.label}</p>
+
+              {stat.onClick && (
+                <div className="absolute top-4 right-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                  <ArrowRight size={16} className={isDark ? "text-violet-400" : "text-violet-600"} />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
       {/* Activity Heatmap */}
-      <section className={`p-6 rounded-3xl shadow-2xl transition-colors ${isDark ? 'bg-[#12061f] border border-violet-500/20' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30'}`}>
+      <section className={cn(
+        "p-8 rounded-[2rem]",
+        isDark ? "bg-[#0f1115] border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+      )}>
         <div className="flex items-center justify-between mb-6">
           <h3 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             <Github className={isDark ? 'text-violet-500' : 'text-violet-600'} size={20} />
@@ -359,7 +358,10 @@ const Dashboard = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className={`p-8 rounded-3xl shadow-2xl relative overflow-hidden transition-colors ${isDark ? 'bg-[#12061f] border border-violet-500/20' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30'}`}
+          className={cn(
+            "p-8 rounded-[2rem] relative overflow-hidden",
+            isDark ? "bg-[#0f1115] border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+          )}
         >
           <div className="flex items-center justify-between mb-6 relative z-10">
             <h3 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -402,7 +404,10 @@ const Dashboard = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className={`p-6 rounded-3xl transition-colors ${isDark ? 'bg-[#0a0a0a] border border-white/5' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30'}`}
+            className={cn(
+              "p-8 rounded-[2rem]",
+              isDark ? "bg-[#0f1115] border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+            )}
           >
             <h4 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               <Clock className="text-emerald-500" size={18} /> Daily Focus (Hrs)
@@ -427,7 +432,10 @@ const Dashboard = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className={`p-6 rounded-3xl transition-colors ${isDark ? 'bg-[#0a0a0a] border border-white/5' : 'bg-white border border-gray-200 shadow-sm'}`}
+            className={cn(
+              "p-8 rounded-[2rem]",
+              isDark ? "bg-[#0f1115] border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+            )}
           >
             <h4 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               <Target className="text-amber-500" size={18} /> Time Distribution
@@ -475,7 +483,10 @@ const Dashboard = () => {
 
       {/* Recent Quiz Results (if any) */}
       {quizResults.length > 0 && (
-        <section className={`p-6 rounded-3xl transition-colors ${isDark ? 'bg-zinc-900/80 border border-white/5' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30'}`}>
+        <section className={cn(
+          "p-8 rounded-[2rem]",
+          isDark ? "bg-[#0f1115] border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.12)]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+        )}>
           <div className="flex items-center justify-between mb-5">
             <h3 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               <CheckCircle className="text-emerald-500" size={20} />
@@ -568,9 +579,12 @@ const Dashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -4 }}
                   onClick={() => navigate('/event-hub')}
-                  className={`group relative p-8 rounded-3xl transition-all overflow-hidden cursor-pointer ${isDark ? 'bg-zinc-900 border border-white/10 hover:border-violet-500/50' : 'bg-white/60 backdrop-blur-xl border border-violet-200/30 hover:border-violet-500/50'}`}
+                  className={cn(
+                    "group relative p-8 rounded-[2rem] transition-all overflow-hidden cursor-pointer",
+                    isDark ? "bg-white/[0.02] border border-white/[0.05] hover:border-violet-500/30 hover:bg-white/[0.04]" : "bg-white/40 backdrop-blur-xl border border-violet-200/40 hover:border-violet-500/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:bg-white/60"
+                  )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
                   <div className="relative z-10 flex justify-between items-start">
                     <div>
