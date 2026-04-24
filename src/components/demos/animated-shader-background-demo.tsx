@@ -1,9 +1,9 @@
-import AnoAI from "@/components/ui/animated-shader-background";
+import AnimatedShaderBackground from "@/components/ui/animated-shader-background";
 
 const DemoOne = () => {
   return (
     <div className="w-full h-screen bg-black">
-      <AnoAI />
+      <AnimatedShaderBackground />
     </div>
   );
 };

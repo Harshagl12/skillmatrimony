@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
-const AnoAI = () => {
+const AnimatedShaderBackground = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,4 +121,4 @@ const AnoAI = () => {
   );
 };
 
-export default AnoAI;
+export default AnimatedShaderBackground;
